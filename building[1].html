@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GTA V RP FiveM/PS5/PS4/Xbox/PC</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; overflow: hidden; height: 100%; background: black; color: white;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+    }
+    /* UI Container */
+    .ui {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 10;
+    }
+    
+    /* Clock display */
+    #gameClock {
+      position: absolute;
+      top: 10px; right: 10px;
+      font-size: 1.5em;
+      background: rgba(0,0,0,0.5);
+      padding: 5px 10px;
+      border-radius: 5px;
+      pointer-events: none;
+      user-select: none;
+    }
+    
+#modLogin {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.8);
+  padding: 10px;
+  border-radius: 6px;
+  z-index: 100;
+}
+
+#modToggleBtn {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 10px 15px;
+  background: #222;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  z-index: 100;
+}
+
+#modMenuContainer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#modMenuBox {
+  background: #111;
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+}
+
+#modMenuBox button {
+  width: 100%;
+  margin: 5px 0;
+  padding: 8px;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+/* ...other styles... */
+
+.ui {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  /*pointer-events: none;*/  /* removed */
+  z-index: 10;
+}
+
+#modLogin {
+  position: absolute;
+  bottom: 50px;
+  left: 10px;
+  background: rgba(0,0,0,0.7);
+  padding: 10px;
+  border-radius: 5px;
+  pointer-events: auto;  /* allow clicks here */
+  z-index: 11;           /* above the .ui layer */
+}
+
+#modPassInput {
+  pointer-events: auto;  /* allow typing */
+  z-index: 12;
+}
+
+/* your other UI/CSS rules */
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px; /* half width */
+  margin-top: -10px;  /* half height */
+  pointer-events: none; /* so it doesn't block clicks */
+  z-index: 20;
+}
+
+/* crosshair lines */
+
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px; /* half width */
+  margin-top: -10px;  /* half height */
+  pointer-events: none; /* so it doesn't block clicks */
+  z-index: 20;
+  background-color: #00000080; /* black with 50% opacity */
+
+}
+
+/* crosshair lines */
+.crosshair::before,
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background: cyan;
+}
+
+.crosshair::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+}
+
+.crosshair::after{
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+}
+
+#money-display {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  font-size: 24px;
+  color: limegreen;
+  font-weight: bold;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 8px 12px;
+  border-radius: 6px;
+  z-index: 100;
+}
+
+ </style>
+</head>
+<body>
+
+  <canvas id="gameCanvas"></canvas>
+
+<!-- Buyer Menu HTML -->
+
+
+  <div class="ui">
+    <div id="gameClock">00:00</div>
+    <div class="crosshair">+</div>
+  <div style="position: absolute; bottom: 100px; left: 10px; background: #111; color: lime; padding: 10px; font-family: monospace; z-index: 1000;">
+  Money: $<span id="moneyAmount">2000</span><br>
+  Weed: <span id="weedAmount">0</span>
+</div>
+
+
+    
+
+
+
+<div id="gameMessage" style="
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: gold;
+  padding: 15px 30px;
+  border-radius: 10px;
+  font-size: 1.2em;
+  opacity: 0;
+  transition: opacity 1s ease;
+  pointer-events: none;
+  z-index: 10000;
+">
+</div>
+
+<script>
+  function showMessage(text, duration = 5000) {
+    const msg = document.getElementById('gameMessage');
+    msg.textContent = text;
+    msg.style.opacity = '1';
+    
+    // After duration, fade out
+    setTimeout(() => {
+      msg.style.opacity = '0';
+    }, duration);
+  }
+  
+  // Example: show the message for 7 seconds on game start
+  showMessage("FRP WILL GET YOU BANNED TEMPORAIARLLY. Do Not FRP / RDM", 7000);
+</script>
+   <!-- Password Entry -->
+<div id="modLogin">
+  <label>Mod Menu Password:</label>
+  <input type="password" id="modPassInput" />
+  <button onclick="verifyModPassword()">Login</button>
+</div>
+
+<!-- Mod Menu Button -->
+<button id="modToggleBtn" style="display:none;" onclick="openModMenu()">Open Mod Menu</button>
+
+<!-- Mod Menu Container -->
+<div id="modMenuContainer" style="display:none;">
+  <div id="modMenuBox">
+    <h3 id="modMenuTitle">Mod Menu</h3>
+    <div id="modMenuButtons"></div>
+    <button onclick="closeModMenu()">Close</button>
+  </div>
+</div>
+<div id="positionDisplay" style="position:fixed; bottom:10px; left:10px; background:#000; color:#0f0; padding:8px; font-family:monospace; z-index:1000;">
+  X: 0<br>Y: 0<br>Z: 0
+</div>
+
+<!-- Weapon Selector UI -->
+<div id="weaponSelector" style="position:absolute;top:50px;left:50px;padding:10px;background:#222;color:white;display:none;">
+  <button id="selectGlock17">Glock 17</button>
+  <button id="selectGlockSwitch">GlockSwitch</button>
+  <button id="selectRifle">Rifle</button>
+</div>
+
+  </div>
+
+  <!-- THREE.js and TWEEN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+<!-- Money & Jobs  Javascript Code-->
+
+<script>
+let playerMoney = 2000;
+let weedAmount = 0;
+function updateStatDisplay() {
+  document.getElementById("moneyAmount").textContent = playerMoney;
+  document.getElementById("weedAmount").textContent = weedAmount;
+}
+
+
+
+</script>
+
+<!-- Lighting and brightness -->
+<script>
+  
+  const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(10, 20, 10);
+scene.add(light);
+
+  
+</script>
+
+
+
+<script>
+  setInterval(() => {
+  const pos = playerGroup.position;
+  document.getElementById("positionDisplay").innerHTML =
+    `X: ${pos.x.toFixed(2)}<br>Y: ${pos.y.toFixed(2)}<br>Z: ${pos.z.toFixed(2)}`;
+}, 100);
+
+</script>
+
+
+<script>
+ 
+</script>
+
+<script>
+
+function selectWeapon(weaponName) {
+  currentWeapon = weaponName;
+  alert(`Selected weapon: ${weaponName}`);
+  document.getElementById("weaponSelector").style.display = "none";
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const weaponMenu = document.getElementById("weaponSelector");
+
+  let bullets = [];
+  let currentWeapon = "glock17"; // default weapon
+  let lastFireTime = 0;
+
+  const weaponStats = {
+    glock17: { damage: 18, speed: 5 },
+    glockSwitch: { damage: 25, speed: 30 },
+    rifle: { damage: 25, speed: 16 }
+  };
+
+  // Toggle weapon menu with "Q"
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "q") {
+      weaponMenu.style.display = weaponMenu.style.display === "none" ? "block" : "none";
+    }
+
+    if (e.key.toLowerCase() === "control") {
+      fireBullet();
+    }
+  });
+
+  // Weapon select buttons
+  document.getElementById("selectGlock17").addEventListener("click", () => {
+    currentWeapon = "glock17";
+    alert("Selected weapon: Glock 17");
+    weaponMenu.style.display = "none";
+  });
+
+  document.getElementById("selectRifle").addEventListener("click", () => {
+    currentWeapon = "rifle";
+    alert("Selected weapon: Rifle");
+    weaponMenu.style.display = "none";
+  });
+
+  // If you have a glock switch button in your HTML:
+  const glockSwitchBtn = document.getElementById("selectGlockSwitch");
+  if (glockSwitchBtn) {
+    glockSwitchBtn.addEventListener("click", () => {
+      currentWeapon = "glockSwitch";
+      alert("Selected weapon: Glock Switch");
+      weaponMenu.style.display = "none";
+    });
+  }
+
+  function fireBullet() {
+    const now = performance.now();
+    const stats = weaponStats[currentWeapon];
+    if (!stats) {
+      console.warn("Unknown weapon stats for", currentWeapon);
+      return;
+    }
+    const minDelay = 1000 / stats.speed;
+    if (now - lastFireTime < minDelay) {
+      return; // Too soon to fire
+    }
+    lastFireTime = now;
+
+    // Create bullet mesh
+    const bullet = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xFFEC8B })
+    );
+
+    bullet.position.copy(camera.position);
+
+    // Use camera.getWorldDirection to get forward direction
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    bullet.userData.velocity = direction.multiplyScalar(stats.speed * 0.1); // tweak speed multiplier as needed
+
+    bullet.userData.damage = stats.damage;
+
+    scene.add(bullet);
+    bullets.push(bullet);
+
+    console.log(`Fired ${currentWeapon} bullet with damage ${stats.damage}`);
+  }
+
+  function updateBullets() {
+    for (let i = 0; i < bullets.length; i++) {
+      bullets[i].position.add(bullets[i].userData.velocity);
+
+      // Remove bullet if too far
+      if (bullets[i].position.distanceTo(camera.position) > 1000) {
+        scene.remove(bullets[i]);
+        bullets.splice(i, 1);
+        i--;
+      }
+    }
+  }
+
+  // Make sure updateBullets is called in your animation loop:
+  function animate() {
+    requestAnimationFrame(animate);
+    movePlayer();
+    updateCamera();
+    renderer.render(scene, camera);
+    TWEEN.update();
+
+    updateBullets();
+  }
+  animate();
+});
+
+  </script>
+  <script>
+  let isAdmin = false;
+let unlimitedMoney = false;
+
+  const modPasswords = {
+  owner: "owner123",
+  admin: "admin123",
+  mod: "mod123"
+};
+
+const modActions = {
+  owner: [
+    { label: "Fly", action: () => alert("Currently Unavaliable") },
+    {label: "Invinciability", action: () => alert("Currently Unavaliable")},
+    { label: "Restart Server", action: () => alert("Server restarting...")},
+    { label: "Kick Player", action: () => alert("Currently Unavaliable") },
+    { label: "Ban Player", action: () => alert("Currently Unavaliable") },
+    {label: "Spawn Owner Car", action: () => alert("Currently Unavaliable")},
+    {label: "JAIL Player", action: () => alert("Currently Unavaliable")},
+  ],
+  admin: [
+    { label: "Fly", action: () => alert("Currently Unavaliable") },
+    {label: "Invinciability", action: () => alert("Currently Unavaliable")},
+    { label: "Kick Player", action: () => alert("Currently Unavaliable") },
+    { label: "Give Weapon", action: () => alert("Currently Unavaliable") },
+    {label: "Spawn Admin Car", action: () => alert("Currently Unavaliable")},
+  ],
+  mod: [
+    { label: "Fly", action: () => alert("Currently Unavaliable") },
+    {label: "Invinciability", action: () => alert("Currently Unavaliable")},
+    { label: "Mute Player", action: () => alert("Currently Unavaliable") },
+    { label: "Kick Player", action: () => alert("Currently Unavaliable") },
+    {label: "Spawn Moderator Car", action: () => alert("Currently Unavaliable")}
+  ]
+};
+
+
+let userModLevel = null;
+
+
+
+
+function verifyModPassword() {
+  const entered = document.getElementById("modPassInput").value.trim();
+  for (const level in modPasswords) {
+    if (entered === modPasswords[level]) {
+      userModLevel = level;
+      document.getElementById("modLogin").style.display = "none";
+      document.getElementById("modToggleBtn").style.display = "block";
+      alert(`Access granted to ${level.toUpperCase()} menu.`);
+      return;
+    }
+  }
+  alert("Incorrect password.");
+}
+
+
+
+
+function openModMenu() {
+  const container = document.getElementById("modMenuContainer");
+  const title = document.getElementById("modMenuTitle");
+  const buttons = document.getElementById("modMenuButtons");
+
+  title.textContent = `${userModLevel.toUpperCase()} MENU`;
+  buttons.innerHTML = "";
+
+  // Add regular mod actions
+  modActions[userModLevel].forEach(action => {
+    const btn = document.createElement("button");
+    btn.textContent = action.label;
+    btn.onclick = action.action;
+    buttons.appendChild(btn);
+  });
+
+  // ✅ Add Unlimited Money Toggle button
+  const toggleBtn = document.createElement("button");
+  toggleBtn.textContent = unlimitedMoney ? "Disable Unlimited Money" : "Enable Unlimited Money";
+  toggleBtn.onclick = () => {
+    unlimitedMoney = !unlimitedMoney;
+    toggleBtn.textContent = unlimitedMoney ? "Disable Unlimited Money" : "Enable Unlimited Money";
+    alert("Unlimited Money " + (unlimitedMoney ? "ENABLED" : "DISABLED"));
+  };
+  buttons.appendChild(toggleBtn);
+
+  container.style.display = "flex";
+}
+
+
+
+
+function closeModMenu() {
+  document.getElementById("modMenuContainer").style.display = "none";
+}
+
+  
+</script>
+
+  <script>
+
+    // --- Clock System with day-night cycle ---
+    let gameTime = 12; // start at noon
+    function updateClock() {
+      gameTime += 0.02; // speed multiplier
+      if (gameTime >= 24) gameTime = 0;
+      const hours = Math.floor(gameTime);
+      const minutes = Math.floor((gameTime % 1) * 60);
+      const clockText = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+      document.getElementById("gameClock").innerText = clockText;
+      requestAnimationFrame(updateClock);
+    }
+    updateClock();
+
+    // --- THREE.js Setup ---
+    const canvas = document.getElementById("gameCanvas");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000);
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+    camera.position.set(0, 2, 10);
+
+    // Lighting
+// ✅ Ambient Light (soft fill)
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.3); // Dimmed
+scene.add(ambientLight);
+
+// ✅ Directional Light (sunlight)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Dimmed
+directionalLight.position.set(100, 200, 100);
+directionalLight.castShadow = true;
+scene.add(directionalLight);
+
+
+const loader = new THREE.TextureLoader();
+
+// FLOOR
+loader.load('grass-texture.png', texture => {
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(4, 4); // ✅ Reduced tiling
+
+  const floorMaterial = new THREE.MeshPhongMaterial({ map: texture });
+
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), floorMaterial);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0;
+  scene.add(floor);
+});
+
+
+loader.load('road_asphalt.jpg', texture => {
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+
+  const roadMaterial = new THREE.MeshStandardMaterial({ map: texture });
+  const baseMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+
+  const segmentLength = 100;
+  const roadWidth = 30;
+  const roadHeight = 1;       // Solid enough for collision
+  const groundY = 3.0;        // Matches your terrain height
+
+  const startX = -0.14;
+  const startZ = 464.35;
+
+  const rows = 4;
+  const cols = 6;
+
+  // 🛣️ Flat Grid Roads (solid + low)
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const x = startX + col * segmentLength;
+      const z = startZ + row * segmentLength;
+
+      const road = new THREE.Mesh(
+        new THREE.BoxGeometry(segmentLength, roadHeight, roadWidth),
+        roadMaterial
+      );
+      road.position.set(x, groundY + roadHeight / 2, z);
+      scene.add(road);
+
+      const cross = new THREE.Mesh(
+        new THREE.BoxGeometry(segmentLength, roadHeight, roadWidth),
+        roadMaterial
+      );
+      cross.rotation.y = Math.PI / 2;
+      cross.position.set(x, groundY + roadHeight / 2, z);
+      scene.add(cross);
+    }
+  }
+const road = new THREE.Mesh(new THREE.BoxGeometry(100, 1, 30), roadMaterial);
+road.position.set(x, y, z);
+scene.add(road);
+});
+
+
+
+
+// Global arrays (place near top of your script)
+const wallMeshes = [];
+const interactiveDoors = [];
+
+// 🔹 Load Textures
+const textureLoader = new THREE.TextureLoader();
+const brickTexture = textureLoader.load('BrickWall.jpg');
+const roofTexture = textureLoader.load('floor_tile.png');
+const doorTexture = textureLoader.load('brickwall.jpg');
+
+// Optional: Repeat textures for large surfaces
+brickTexture.wrapS = THREE.RepeatWrapping;
+brickTexture.wrapT = THREE.RepeatWrapping;
+brickTexture.repeat.set(4, 2);
+
+roofTexture.wrapS = THREE.RepeatWrapping;
+roofTexture.wrapT = THREE.RepeatWrapping;
+roofTexture.repeat.set(2, 2);
+
+doorTexture.wrapS = THREE.RepeatWrapping;
+doorTexture.wrapT = THREE.RepeatWrapping;
+doorTexture.repeat.set(1, 1);
+
+function createBuilding(x, z, options = {}) {
+  const {
+    width = 30,
+    depth = 30,
+    height = 10,
+    wallColor = 0x888888,
+    roofColor = 0xaaaaaa,
+    doorColor = 0xFFFFFF
+
+  } = options;
+
+  const building = new THREE.Group();
+
+  // 🔹 Materials with textures
+  const wallMaterial = new THREE.MeshStandardMaterial({
+    map: brickTexture,
+    color: wallColor,
+    roughness: 0.8
+  });
+
+  const floorMaterial = new THREE.MeshStandardMaterial({
+    map: roofTexture,
+    color: roofColor,
+    roughness: 0.6
+  });
+
+  const doorMaterial = new THREE.MeshStandardMaterial({
+    map: doorTexture,
+    color: doorColor,
+    roughness: 0.5
+  });
+
+  const wallThickness = 1;
+  const doorWidth = 3;
+  const sideWallWidth = (width - doorWidth) / 2;
+
+  // Floor
+  const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(width, 1, depth), floorMaterial);
+  floorMesh.position.y = 0.5;
+  building.add(floorMesh);
+
+  // Back Wall
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(width, height, wallThickness), wallMaterial);
+  backWall.position.set(0, height / 2 + 1, -depth / 2);
+  building.add(backWall);
+  wallMeshes.push(backWall);
+
+  // Front Wall (split for door)
+  const frontWallLeft = new THREE.Mesh(new THREE.BoxGeometry(sideWallWidth, height, wallThickness), wallMaterial);
+  frontWallLeft.position.set(-doorWidth / 2 - sideWallWidth / 2, height / 2 + 1, depth / 2);
+  building.add(frontWallLeft);
+  wallMeshes.push(frontWallLeft);
+
+  const frontWallRight = new THREE.Mesh(new THREE.BoxGeometry(sideWallWidth, height, wallThickness), wallMaterial);
+  frontWallRight.position.set(doorWidth / 2 + sideWallWidth / 2, height / 2 + 1, depth / 2);
+  building.add(frontWallRight);
+  wallMeshes.push(frontWallRight);
+
+  // Side Walls
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, height, depth), wallMaterial);
+  leftWall.position.set(-width / 2, height / 2 + 1, 0);
+  building.add(leftWall);
+  wallMeshes.push(leftWall);
+
+  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, height, depth), wallMaterial);
+  rightWall.position.set(width / 2, height / 2 + 1, 0);
+  building.add(rightWall);
+  wallMeshes.push(rightWall);
+
+  // Roof
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(width, 1, depth), floorMaterial);
+  roof.position.y = height + 1;
+  building.add(roof);
+
+  // Door
+  const door = new THREE.Mesh(new THREE.BoxGeometry(doorWidth, 7, 0.5), doorMaterial);
+  door.position.set(0, 4, depth / 2 + 0.25);
+  door.isOpen = false;
+  building.add(door);
+  interactiveDoors.push(door);
+
+  building.position.set(x, 0, z);
+  scene.add(building);
+}
+
+// ✅ Then: define createNeighborhood
+function createNeighborhood() {
+  for (let i = 0; i < 5; i++) {
+    const z = i * 50 - 100;
+
+    // Houses on left and right
+    createBuilding(-50, z, {
+      width: 20,
+      depth: 20,
+      height: 8,
+      wallColor: 0xbb4444,
+      roofColor: 0xaaaaaa,
+      doorColor: 0xFFFFFF
+
+    });
+
+    createBuilding(50, z, {
+      width: 20,
+      depth: 20,
+      height: 8,
+      wallColor: 0xbb4444,
+      roofColor: 0xaaaaaa,
+      doorColor: 0xFFFFFF
+
+    });
+
+    // Apartments in center every other row
+    if (i % 2 === 0) {
+      createBuilding(0, z, {
+        width: 40,
+        depth: 40,
+        height: 15,
+        wallColor: 0x444444,
+        roofColor: 0x999999,
+        doorColor: 0xFFFFFF
+
+      });
+    }
+  }
+}
+createNeighborhood();
+
+// Create seller NPC (Back Right House)
+const sellerMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green
+sellerNPC = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), sellerMat);
+sellerNPC.position.set(55, 1, -100); // Right side, behind row 0 house
+scene.add(sellerNPC);
+
+// Create buyer NPC (Front Left House)
+const buyerMat = new THREE.MeshStandardMaterial({ color: 0x0000ff }); // Blue
+buyerNPC = new THREE.Mesh(new THREE.BoxGeometry(1, 2, 1), buyerMat);
+buyerNPC.position.set(55, 1, 150); // ✅ Front of front-right house
+
+scene.add(buyerNPC);
+
+
+
+    // --- Player Setup ---
+    const playerGroup = new THREE.Group();
+// --- Player Size for Collision ---
+const playerWidth = 0.75;   // Half of body width (1.5 / 2)
+const playerHeight = 1.5;   // Half of full height (body + head)
+
+    // Body parts
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffffcc });
+    const blackMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 1), bodyMat);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), skinMat);
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), bodyMat);
+    const armR = armL.clone();
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2, 0.6), blackMat);
+    const legR = legL.clone();
+
+    head.position.set(0, 2.5, 0);
+    body.position.set(0, 0.5, 0);
+    armL.position.set(-1.2, 0.5, 0);
+    armR.position.set(1.2, 0.5, 0);
+    legL.position.set(-0.5, -2, 0);
+    legR.position.set(0.5, -2, 0);
+
+    playerGroup.add(body, head, armL, armR, legL, legR);
+    playerGroup.position.set(0, 3, -10);
+    scene.add(playerGroup);
+
+    // Gun mesh attached to player
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 1.5), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+    gun.position.set(1.5, 0.5, 0.2);
+    playerGroup.add(gun);
+
+    // --- Controls ---
+ const keys = {};
+
+document.addEventListener("keydown", (e) => {
+  keys[e.key.toLowerCase()] = true;
+
+  if (e.key.toLowerCase() === "e") {
+    console.log("E pressed");
+    tryOpenNearbyDoor();
+    tryDrugInteraction();  // 👈 Call new function for NPCs
+function updateStatDisplay() {
+  document.getElementById("moneyAmount").textContent = playerMoney;
+  document.getElementById("weedAmount").textContent = weedAmount;
+}
+
+  }
+});
+
+document.addEventListener("keyup", (e) => {
+  keys[e.key.toLowerCase()] = false;
+});
+function tryOpenNearbyDoor() {
+  const playerPos = playerGroup.position;
+
+  for (const door of interactiveDoors) {
+    const doorPos = door.getWorldPosition(new THREE.Vector3());
+    const distance = doorPos.distanceTo(playerPos);
+
+    console.log("Checking door at", doorPos, "distance:", distance);
+
+    if (distance < 5) {
+      const slideDistance = 3;
+
+      if (door.originalX === undefined) {
+        door.originalX = door.position.x;
+      }
+
+      if (!door.isOpen) {
+        door.position.x = door.originalX + slideDistance;
+        door.isOpen = true;
+        console.log("Door opened");
+      } else {
+        door.position.x = door.originalX;
+        door.isOpen = false;
+        console.log("Door closed");
+      }
+
+      break;
+    }
+  }
+}
+
+
+function tryDrugInteraction() {
+  const pos = playerGroup.position;
+
+  // Seller interaction
+  if (sellerNPC && pos.distanceTo(sellerNPC.position) < 3) {
+    if (unlimitedMoney || playerMoney >= 500) {
+      weedAmount++;
+      if (!unlimitedMoney) playerMoney -= 500;
+      alert("You bought 1 weed for $500.");
+    } else {
+      alert("Not enough money to buy weed.");
+    }
+    updateStatDisplay();
+  }
+
+  // Buyer interaction
+  if (buyerNPC && pos.distanceTo(buyerNPC.position) < 3) {
+    if (weedAmount > 0) {
+      weedAmount--;
+      if (!unlimitedMoney) playerMoney += 3000;
+      alert("You sold 1 weed for $3000.");
+    } else {
+      alert("You don't have any weed to sell.");
+    }
+    updateStatDisplay();
+  }
+}
+
+
+
+function movePlayer() {
+  const speed = 0.5;
+  const direction = new THREE.Vector3();
+
+  if (keys["w"]) direction.z -= 1;
+  if (keys["s"]) direction.z += 1;
+  if (keys["a"]) direction.x -= 1;
+  if (keys["d"]) direction.x += 1;
+
+  if (direction.length() === 0) return;
+
+  direction.normalize();
+
+  // Rotate direction by camYaw
+  const angle = camYaw;
+  const sin = Math.sin(angle);
+  const cos = Math.cos(angle);
+
+const moveX = direction.x * cos + direction.z * sin;
+const moveZ = -direction.x * sin + direction.z * cos;
+
+
+  // Intended new position
+  const newX = playerGroup.position.x + moveX * speed;
+  const newZ = playerGroup.position.z + moveZ * speed;
+
+  // Create a manual bounding box at the new position
+  const min = new THREE.Vector3(newX - playerWidth, playerGroup.position.y - playerHeight, newZ - playerWidth);
+  const max = new THREE.Vector3(newX + playerWidth, playerGroup.position.y + playerHeight, newZ + playerWidth);
+  const tempBox = new THREE.Box3(min, max);
+
+  // Check collision with walls and doors
+  let blocked = false;
+  for (const object of wallMeshes.concat(interactiveDoors)) {
+
+    const objectBox = new THREE.Box3().setFromObject(object);
+    if (tempBox.intersectsBox(objectBox)) {
+      blocked = true;
+      break;
+    }
+  }
+
+  // Move only if not blocked
+  if (!blocked) {
+    playerGroup.position.x = newX;
+    playerGroup.position.z = newZ;
+  }
+}
+
+
+
+    // Mouse look controls
+    let camYaw = 0, camPitch = 0;
+    let mouseDown = false;
+    window.addEventListener("mousedown", () => mouseDown = true);
+    window.addEventListener("mouseup", () => mouseDown = false);
+    window.addEventListener("mousemove", e => {
+      if (mouseDown) {
+        camYaw -= e.movementX * 0.002;
+        camPitch -= e.movementY * 0.002;
+        camPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camPitch));
+      }
+    });
+
+    // Camera update: first-person view
+    function updateCamera() {
+      camera.position.copy(playerGroup.position).add(new THREE.Vector3(0, 2, 0));
+      camera.rotation.set(camPitch, camYaw, 0);
+    }
+
+
+    // Responsive resize
+    window.addEventListener("resize", () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+
+
+
+    // Main animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      movePlayer();
+      updateCamera();
+      renderer.render(scene, camera);
+      TWEEN.update();
+    }
+    animate();
+
+  </script>
+
+</body>
+</html>

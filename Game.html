@@ -1,0 +1,350 @@
+<!DOCTYPE html><html lang="en"><head>
+  <meta charset="UTF-8" />
+  <title>3D Game with Building</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#000; }
+    
+    canvas {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  width: 100vw;
+  height: 100vh;
+}
+
+    
+  * UI Styles */
+    #switchViewBtn {
+      position:absolute; top:10px; left:10px; padding:10px 20px;
+      background:rgba(0,0,0,0.7); color:white; border:none; cursor:pointer; z-index:10;
+    }
+    #weaponMenu {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(0,0,0,0.8); padding:20px; border-radius:15px; display:none;
+      flex-direction:column; gap:10px; color:white; z-index:20; text-align:center;
+    }
+    .weaponOption {
+      padding:10px; border:1px solid #aaa; border-radius:5px; cursor:pointer;
+    }
+    .weaponOption:hover { background:rgba(255,255,255,0.1); }
+    #selectedWeapon {
+      position:absolute; bottom:10px; right:10px;
+      background:rgba(0,0,0,0.6); color:white; padding:5px 10px;
+      border-radius:5px; z-index:10;
+    }
+    #crosshair {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-size:32px; color:red; pointer-events:none; user-select:none; z-index:999;
+    }
+    #hitMarker {
+      position:absolute; width:30px; height:30px; color:red;
+      font-size:30px; font-weight:bold; display:none; z-index:1000;
+    }
+    #damageMarker {
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: red;
+      font-size: 20px;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .show-damage {
+      animation: fadeOut 0.01s ease forwards;
+    }
+    @keyframes fadeOut {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <button id="switchViewBtn">Switch View</button>
+  <div id="weaponMenu">
+    <div class="weaponOption">🔫 Glock43</div>
+  </div>
+  <div id="selectedWeapon">Selected Weapon: 🔫 Glock43</div>
+  <div id="crosshair">+</div>
+  <div id="hitMarker">X</div>
+  <div id="damageMarker"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script><script>
+  // ------------------- BASE SCENE SETUP -------------------
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 3000);
+  const renderer = new THREE.WebGLRenderer();
+  renderer.setSize(innerWidth, innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  const clock = new THREE.Clock();
+  const light = new THREE.DirectionalLight(0xffffff, 1.5);
+  light.position.set(100, 200, 100);
+  scene.add(light);
+
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+  scene.add(ambientLight);
+
+  const loader = new THREE.TextureLoader();
+  loader.load('grass-texture.png', texture => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(100, 100);
+    const floorMat = new THREE.MeshPhongMaterial({ map: texture });
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+  });
+
+  // ------------------- BUILDING SETUP -------------------
+  const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+  const building = new THREE.Group();
+  const wallMeshes = [];
+
+  const buildingWidth = 30;
+  const buildingDepth = 30;
+  const buildingHeight = 10;
+  const wallThickness = 1;
+  const wallHeight = buildingHeight;
+
+  const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(buildingWidth, 1, buildingDepth), floorMaterial);
+  floorMesh.position.y = 0.5;
+  building.add(floorMesh);
+
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(buildingWidth, wallHeight, wallThickness), wallMaterial);
+  backWall.position.set(0, wallHeight / 2 + 1, -buildingDepth / 2);
+  building.add(backWall);
+  wallMeshes.push(backWall);
+
+  const doorWidth = 3;
+  const wallGap = doorWidth;
+  const sideWallWidth = (buildingWidth - wallGap) / 2;
+
+  const frontWallLeft = new THREE.Mesh(
+    new THREE.BoxGeometry(sideWallWidth, wallHeight, wallThickness),
+    wallMaterial
+  );
+  frontWallLeft.position.set(-doorWidth / 2 - sideWallWidth / 2, wallHeight / 2 + 1, buildingDepth / 2);
+  building.add(frontWallLeft);
+  wallMeshes.push(frontWallLeft);
+
+  const frontWallRight = new THREE.Mesh(
+    new THREE.BoxGeometry(sideWallWidth, wallHeight, wallThickness),
+    wallMaterial
+  );
+  frontWallRight.position.set(doorWidth / 2 + sideWallWidth / 2, wallHeight / 2 + 1, buildingDepth / 2);
+  building.add(frontWallRight);
+  wallMeshes.push(frontWallRight);
+
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, buildingDepth), wallMaterial);
+  leftWall.position.set(-buildingWidth / 2, wallHeight / 2 + 1, 0);
+  building.add(leftWall);
+  wallMeshes.push(leftWall);
+
+  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight, buildingDepth), wallMaterial);
+  rightWall.position.set(buildingWidth / 2, wallHeight / 2 + 1, 0);
+  building.add(rightWall);
+  wallMeshes.push(rightWall);
+
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(buildingWidth, 1, buildingDepth), floorMaterial);
+  roof.position.y = wallHeight + 1;
+  building.add(roof);
+
+  building.position.set(0, 0, 0);
+  scene.add(building);
+
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(3, 7, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x552200 })
+  );
+  door.position.set(0, 4, buildingDepth / 2 + 0.25);
+  door.isOpen = false;
+  building.add(door);
+
+  // ------------------- PLAYER -------------------
+  const playerGroup = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 1), new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
+  const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffcc }));
+  const armL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
+  const armR = armL.clone();
+  const legL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2, 0.6), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+  const legR = legL.clone();
+
+  head.position.set(0, 2.5, 0); body.position.set(0, 0.5, 0);
+  armL.position.set(-1.2, 0.5, 0); armR.position.set(1.2, 0.5, 0);
+  legL.position.set(-0.5, -2, 0); legR.position.set(0.5, -2, 0);
+  playerGroup.add(body, head, armL, armR, legL, legR);
+  playerGroup.position.set(0, 3, -10);
+  scene.add(playerGroup);
+
+  const gun = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 1.5), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+  gun.position.set(1.5, 0.5, 0.2);
+  playerGroup.add(gun);
+
+  // ------------------- GUN + KEYS -------------------
+  const bullets = [], keys = {}, weapons = {
+    "🔫 Glock43": { damage: 35, color: 0xffff00, speed: 5, fireRate: 0.05 }
+  };
+  let firstPerson = true, weaponMenuVisible = false, currentWeapon = "🔫 Glock43", lastShotTime = 0;
+
+  document.addEventListener("keydown", (e) => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === "e") {
+      const frontVector = new THREE.Vector3(0, 0, -1).applyQuaternion(playerGroup.quaternion).normalize().multiplyScalar(2);
+      const playerFront = playerGroup.position.clone().add(frontVector);
+      const distance = playerFront.distanceTo(door.position);
+      if (distance < 3.5) {
+        door.isOpen = !door.isOpen;
+        door.rotation.y = door.isOpen ? -Math.PI / 2 : 0;
+      }
+    }
+  });
+
+  document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+  function movePlayer() {
+    let mx = 0, mz = 0, s = 0.5;
+    if (!weaponMenuVisible) {
+      if (keys["w"]) mz -= 1;
+      if (keys["s"]) mz += 1;
+      if (keys["a"]) mx -= 1;
+      if (keys["d"]) mx += 1;
+      const len = Math.hypot(mx, mz);
+      if (len > 0) {
+        mx /= len; mz /= len;
+        const angle = camYaw + Math.atan2(mx, mz);
+        const dx = Math.sin(angle) * s;
+        const dz = Math.cos(angle) * s;
+        const nextPos = playerGroup.position.clone().add(new THREE.Vector3(dx, 0, dz));
+        let blocked = false;
+        for (const wall of wallMeshes) {
+          const wallBox = new THREE.Box3().setFromObject(wall);
+          const playerBox = new THREE.Box3().setFromCenterAndSize(nextPos.clone().setY(1.5), new THREE.Vector3(1.5, 3, 1));
+          if (wallBox.intersectsBox(playerBox)) {
+            blocked = true;
+            break;
+          }
+        }
+        if (!door.isOpen) {
+          const doorBox = new THREE.Box3().setFromObject(door);
+          const playerBox = new THREE.Box3().setFromCenterAndSize(nextPos.clone().setY(1.5), new THREE.Vector3(1.5, 3, 1));
+          if (doorBox.intersectsBox(playerBox)) blocked = true;
+        }
+        if (!blocked) {
+          playerGroup.rotation.y = angle;
+          playerGroup.position.x += dx;
+          playerGroup.position.z += dz;
+        }
+      }
+    }
+  }
+
+  let camYaw = 0, camPitch = 0, mouseDown = false;
+  window.addEventListener("mousedown", () => mouseDown = true);
+  window.addEventListener("mouseup", () => mouseDown = false);
+  window.addEventListener("mousemove", e => {
+    if (mouseDown) {
+      camYaw -= e.movementX * 0.002;
+      camPitch -= e.movementY * 0.002;
+      camPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camPitch));
+    }
+  });
+
+  function updateCamera() {
+    if (firstPerson) {
+      camera.position.copy(playerGroup.position).add(new THREE.Vector3(0, 2, 0));
+      camera.rotation.set(camPitch, camYaw, 0);
+    } else {
+      camera.position.set(
+        playerGroup.position.x - Math.sin(camYaw) * 10,
+        playerGroup.position.y + 6,
+        playerGroup.position.z - Math.cos(camYaw) * 10
+      );
+      camera.lookAt(playerGroup.position);
+    }
+  }
+
+  function animate() {
+    requestAnimationFrame(animate);
+    movePlayer();
+    updateCamera();
+    renderer.render(scene, camera);
+    TWEEN.update();
+  }
+
+  // ------------------- MULTIPLE HOUSES -------------------
+  
+  function createFullHouse(x, z) {
+  const house = new THREE.Group();
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+
+  const width = 10, depth = 10, height = 8, thickness = 1, doorW = 2.5;
+
+  // Floor
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(width, 1, depth), floorMat);
+  floor.position.y = 0.5;
+  house.add(floor);
+
+  // Roof
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(width, 1, depth), floorMat);
+  roof.position.y = height + 1;
+  house.add(roof);
+
+  // Back wall
+  const backWall = new THREE.Mesh(new THREE.BoxGeometry(width, height, thickness), wallMat);
+  backWall.position.set(0, height / 2 + 1, -depth / 2);
+  house.add(backWall);
+
+  // Front left/right walls with door gap
+  const sideW = (width - doorW) / 2;
+  const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, thickness), wallMat);
+  frontLeft.position.set(-doorW / 2 - sideW / 2, height / 2 + 1, depth / 2);
+  const frontRight = new THREE.Mesh(new THREE.BoxGeometry(sideW, height, thickness), wallMat);
+  frontRight.position.set(doorW / 2 + sideW / 2, height / 2 + 1, depth / 2);
+  house.add(frontLeft);
+  house.add(frontRight);
+
+  // Side walls
+  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(thickness, height, depth), wallMat);
+  leftWall.position.set(-width / 2, height / 2 + 1, 0);
+  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(thickness, height, depth), wallMat);
+  rightWall.position.set(width / 2, height / 2 + 1, 0);
+  house.add(leftWall);
+  house.add(rightWall);
+
+  // Door (non-functional for now)
+  const door = new THREE.Mesh(
+    new THREE.BoxGeometry(doorW, 6, 0.5),
+    new THREE.MeshStandardMaterial({ color: 0x552200 })
+  );
+  door.position.set(0, 4, depth / 2 + 0.25);
+  house.add(door);
+
+  // Position and add
+  house.position.set(x, 0, z);
+  scene.add(house);
+}
+const spacing = 18;
+const housesPerRow = 5;
+
+for (let i = 0; i < housesPerRow; i++) {
+  createFullHouse(i * spacing - 40, -50); // Row 1
+  createFullHouse(i * spacing - 40, -80); // Row 2
+  createFullHouse(i * spacing - 40, -110); // Row 3
+}
+
+  animate();
+</script>
+
+</body>
+</html>

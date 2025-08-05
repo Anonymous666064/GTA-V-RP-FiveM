@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>3D Game with Hit Marker</title>
+  <style>
+    body { margin:0; overflow:hidden; background:#000; }
+    canvas { display:block; }
+
+    /* UI Styles */
+    #switchViewBtn {
+      position:absolute; top:10px; left:10px; padding:10px 20px;
+      background:rgba(0,0,0,0.7); color:white; border:none; cursor:pointer; z-index:10;
+    }
+    #weaponMenu {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:rgba(0,0,0,0.8); padding:20px; border-radius:15px; display:none;
+      flex-direction:column; gap:10px; color:white; z-index:20; text-align:center;
+    }
+    .weaponOption {
+      padding:10px; border:1px solid #aaa; border-radius:5px; cursor:pointer;
+    }
+    .weaponOption:hover {
+      background:rgba(255,255,255,0.1);
+    }
+    #selectedWeapon {
+      position:absolute; bottom:10px; right:10px;
+      background:rgba(0,0,0,0.6); color:white; padding:5px 10px;
+      border-radius:5px; z-index:10;
+    }
+    #crosshair {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-size:32px; color:red; pointer-events:none; user-select:none; z-index:999;
+    }
+
+    #hitMarker {
+      position:absolute; width:30px; height:30px; color:red;
+      font-size:30px; font-weight:bold; display:none; z-index:1000;
+    }
+
+#damageMarker {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: red;
+  font-size: 20px;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.show-damage {
+  animation: fadeOut 0.01s ease forwards;
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+}
+
+  </style>
+</head>
+<body>
+  <button id="switchViewBtn">Switch View</button>
+  <div id="weaponMenu">
+    <div class="weaponOption">🔫 Glock43</div>
+  </div>
+  <div id="selectedWeapon">Selected Weapon: 🔫 Glock43</div>
+  <div id="crosshair">+</div>
+  <div id="hitMarker">X</div>
+  <div id="damageMarker"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 3000);
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(innerWidth, innerHeight);
+    document.body.appendChild(renderer.domElement);
+    const clock = new THREE.Clock();
+
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(100, 200, 100);
+    scene.add(light);
+
+    const loader = new THREE.TextureLoader();
+loader.load('grass-texture.png', texture => {
+  texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(100, 100); // Adjust this for how tiled it appears
+  
+  const floorMat = new THREE.MeshPhongMaterial({ map: texture });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  scene.add(floor);
+});
+
+    const playerGroup = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 1), new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: 0xffffcc }));
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), new THREE.MeshStandardMaterial({ color: 0x00ff00 }));
+    const armR = armL.clone();
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2, 0.6), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+    const legR = legL.clone();
+
+    head.position.set(0, 2.5, 0); body.position.set(0, 0.5, 0);
+    armL.position.set(-1.2, 0.5, 0); armR.position.set(1.2, 0.5, 0);
+    legL.position.set(-0.5, -2, 0); legR.position.set(0.5, -2, 0);
+
+    playerGroup.add(body, head, armL, armR, legL, legR);
+    playerGroup.position.y = 3;
+    scene.add(playerGroup);
+
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 1.5), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+    gun.position.set(1.5, 0.5, 0.2);
+    playerGroup.add(gun);
+
+    const npc = new THREE.Mesh(new THREE.BoxGeometry(1, 4, 1), new THREE.MeshStandardMaterial({ color: 0xff0000 }));
+    npc.position.set(0, 2, -10);
+    npc.health = 100;
+    scene.add(npc);
+
+    const bullets = [];
+    const bloodGroup = new THREE.Group(); scene.add(bloodGroup);
+    const bodyParts = [];
+
+    let keys = {}, firstPerson = true, weaponMenuVisible = false;
+    let currentWeapon = "🔫 Glock43";
+
+    const weapons = {
+      "🔫 Glock43": { damage: 35, color: 0xffff00, speed: 5, fireRate: 0.05 }
+    };
+
+    document.getElementById("switchViewBtn").onclick = () => firstPerson = !firstPerson;
+    const weaponMenu = document.getElementById("weaponMenu"), weaponText = document.getElementById("selectedWeapon");
+
+    document.addEventListener("keydown", e => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key.toLowerCase() === "q") toggleWeaponMenu();
+    });
+    document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+    function toggleWeaponMenu() {
+      weaponMenuVisible = !weaponMenuVisible;
+      weaponMenu.style.display = weaponMenuVisible ? "flex" : "none";
+    }
+
+    document.querySelectorAll(".weaponOption").forEach(opt => {
+      opt.addEventListener("click", () => {
+        currentWeapon = opt.textContent;
+        weaponText.textContent = `Selected Weapon: ${currentWeapon}`;
+        gun.material.color.set(weapons[currentWeapon].color);
+        toggleWeaponMenu();
+      });
+    });
+
+    function shoot() {
+      const now = clock.getElapsedTime();
+      const w = weapons[currentWeapon];
+      if (!w || now - lastShotTime < w.fireRate) return;
+      lastShotTime = now;
+      createBullet(w.speed * 2, w.color);
+    }
+
+    let lastShotTime = 0;
+    window.addEventListener("keydown", e => {
+      if (e.key === "Control") shoot();
+    });
+
+    function createBullet(speed, color) {
+      const geometry = new THREE.CylinderGeometry(0.05, 0.05, 1.2, 8);
+      const bullet = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color }));
+      bullet.position.copy(camera.position);
+      bullet.direction = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      bullet.speed = speed;
+      bullet.rotation.x = Math.PI / 2;
+      bullets.push(bullet);
+      scene.add(bullet);
+    }
+
+    let camYaw = 0, camPitch = 0, mouseDown = false;
+    window.addEventListener("mousedown", () => mouseDown = true);
+    window.addEventListener("mouseup", () => mouseDown = false);
+    window.addEventListener("mousemove", e => {
+      if (mouseDown) {
+        camYaw -= e.movementX * 0.002;
+        camPitch -= e.movementY * 0.002;
+        camPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camPitch));
+      }
+    });
+
+    function movePlayer() {
+      let mx = 0, mz = 0, s = 0.5;
+      if (!weaponMenuVisible) {
+        if (keys["w"]) mz -= 1;
+        if (keys["s"]) mz += 1;
+        if (keys["a"]) mx -= 1;
+        if (keys["d"]) mx += 1;
+        const len = Math.hypot(mx, mz);
+        if (len > 0) {
+          mx /= len; mz /= len;
+          const angle = camYaw + Math.atan2(mx, mz);
+          playerGroup.rotation.y = angle;
+          playerGroup.position.x += Math.sin(angle) * s;
+          playerGroup.position.z += Math.cos(angle) * s;
+        }
+      }
+    }
+
+    function updateCamera() {
+      if (firstPerson) {
+        camera.position.copy(playerGroup.position).add(new THREE.Vector3(0, 2, 0));
+        camera.rotation.set(camPitch, camYaw, 0);
+      } else {
+        camera.position.set(
+          playerGroup.position.x - Math.sin(camYaw) * 10,
+          playerGroup.position.y + 6,
+          playerGroup.position.z - Math.cos(camYaw) * 10
+        );
+        camera.lookAt(playerGroup.position);
+      }
+    }
+
+    function showHitMarker() {
+      const marker = document.getElementById("hitMarker");
+      const npcPos = npc.position.clone();
+      npcPos.y += 2;
+      const screenPos = npcPos.project(camera);
+      const x = (screenPos.x + 1) / 2 * innerWidth;
+      const y = -(screenPos.y - 1) / 2 * innerHeight;
+      marker.style.left = `${x - 15}px`;
+      marker.style.top = `${y - 15}px`;
+      marker.style.display = "block";
+      setTimeout(() => marker.style.display = "none", 300);
+    }
+
+    function showDamage(amount) {
+  const marker = document.getElementById("damageMarker");
+  marker.textContent = `-${amount} HP`;
+  
+  // Restart animation
+  marker.classList.remove("show-damage");
+  void marker.offsetWidth; // force reflow
+  marker.classList.add("show-damage");
+}
+    
+function applyDamage() {
+  const dmg = weapons[currentWeapon].damage;
+  npc.health -= dmg;
+  showDamage(dmg);
+  showHitMarker();
+  
+  if (npc.health <= 0 && !npc.dead) {
+    npc.dead = true;
+    // Make the dummy fall backward
+    const fallOver = () => {
+      if (npc.rotation.x > -Math.PI / 2) {
+        npc.rotation.x -= 0.2;
+        requestAnimationFrame(fallOver);
+      }
+    };
+    fallOver();
+  }
+}
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+      movePlayer();
+      updateCamera();
+
+      for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.position.add(b.direction.clone().multiplyScalar(b.speed));
+        if (npc && npc.health > 0 && b.position.distanceTo(npc.position) < 1) {
+          applyDamage();
+          scene.remove(b); bullets.splice(i, 1);
+        } else if (b.position.length() > 500) {
+          scene.remove(b); bullets.splice(i, 1);
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>

@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GTA V RP FiveM/PS5/PS4/Xbox/PC</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; overflow: hidden; height: 100%; background: black; color: white;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+    }
+    /* UI Container */
+    .ui {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 10;
+    }
+    
+    /* Clock display */
+    #gameClock {
+      position: absolute;
+      top: 10px; right: 10px;
+      font-size: 1.5em;
+      background: rgba(0,0,0,0.5);
+      padding: 5px 10px;
+      border-radius: 5px;
+      pointer-events: none;
+      user-select: none;
+    }
+    
+#modLogin {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  background: rgba(0,0,0,0.8);
+  padding: 10px;
+  border-radius: 6px;
+  z-index: 100;
+}
+
+#modToggleBtn {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 10px 15px;
+  background: #222;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  z-index: 100;
+}
+
+#modMenuContainer {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100vw; height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#modMenuBox {
+  background: #111;
+  color: white;
+  padding: 20px;
+  border-radius: 10px;
+  width: 300px;
+}
+
+#modMenuBox button {
+  width: 100%;
+  margin: 5px 0;
+  padding: 8px;
+  background: #333;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+/* ...other styles... */
+
+.ui {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  /*pointer-events: none;*/  /* removed */
+  z-index: 10;
+}
+
+#modLogin {
+  position: absolute;
+  bottom: 50px;
+  left: 10px;
+  background: rgba(0,0,0,0.7);
+  padding: 10px;
+  border-radius: 5px;
+  pointer-events: auto;  /* allow clicks here */
+  z-index: 11;           /* above the .ui layer */
+}
+
+#modPassInput {
+  pointer-events: auto;  /* allow typing */
+  z-index: 12;
+}
+
+/* your other UI/CSS rules */
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px; /* half width */
+  margin-top: -10px;  /* half height */
+  pointer-events: none; /* so it doesn't block clicks */
+  z-index: 20;
+}
+
+/* crosshair lines */
+
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px; /* half width */
+  margin-top: -10px;  /* half height */
+  pointer-events: none; /* so it doesn't block clicks */
+  z-index: 20;
+  background-color: #00000080; /* black with 50% opacity */
+
+}
+
+/* crosshair lines */
+.crosshair::before,
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background: cyan;
+}
+
+.crosshair::before {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  margin-top: -1px;
+}
+
+.crosshair::after{
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+}
+
+  </style>
+</head>
+<body>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <div class="ui">
+    <div id="gameClock">00:00</div>
+    <div class="crosshair">+</div>
+<div id="gameMessage" style="
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: gold;
+  padding: 15px 30px;
+  border-radius: 10px;
+  font-size: 1.2em;
+  opacity: 0;
+  transition: opacity 1s ease;
+  pointer-events: none;
+  z-index: 10000;
+">
+</div>
+
+<script>
+  function showMessage(text, duration = 5000) {
+    const msg = document.getElementById('gameMessage');
+    msg.textContent = text;
+    msg.style.opacity = '1';
+    
+    // After duration, fade out
+    setTimeout(() => {
+      msg.style.opacity = '0';
+    }, duration);
+  }
+  
+  // Example: show the message for 7 seconds on game start
+  showMessage("FRP WILL GET YOU BANNED TEMPORAIARLLY. Do Not FRP / RDM", 7000);
+</script>
+   <!-- Password Entry -->
+<div id="modLogin">
+  <label>Mod Menu Password:</label>
+  <input type="password" id="modPassInput" />
+  <button onclick="verifyModPassword()">Login</button>
+</div>
+
+<!-- Mod Menu Button -->
+<button id="modToggleBtn" style="display:none;" onclick="openModMenu()">Open Mod Menu</button>
+
+<!-- Mod Menu Container -->
+<div id="modMenuContainer" style="display:none;">
+  <div id="modMenuBox">
+    <h3 id="modMenuTitle">Mod Menu</h3>
+    <div id="modMenuButtons"></div>
+    <button onclick="closeModMenu()">Close</button>
+  </div>
+</div>
+
+<!-- Weapon Selector UI -->
+<div id="weaponSelector" style="position:absolute;top:50px;left:50px;padding:10px;background:#222;color:white;display:none;">
+  <button id="selectGlock17">Glock 17</button>
+  <button id="selectGlockSwitch">GlockSwitch</button>
+  <button id="selectRifle">Rifle</button>
+</div>
+
+  </div>
+
+  <!-- THREE.js and TWEEN -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
+
+<script>
+  let currentWeapon = null;
+
+
+  function selectWeapon(weaponName) {
+    currentWeapon = weaponName;
+    alert(`Selected weapon: ${weaponName}`);
+    document.getElementById("weaponSelector").style.display = "none";
+  }
+  
+  document.addEventListener('DOMContentLoaded', () => {
+  const weaponMenu = document.getElementById("weaponSelector");
+
+  let bullets = [];
+  let currentWeapon = "glock17"; // default weapon
+  let lastFireTime = 0;
+
+  const weaponStats = {
+    glock17: { damage: 18, speed: 5 },
+    glockSwitch: { damage: 25, speed: 30 },
+    rifle: { damage: 25, speed: 16 }
+  };
+
+  // Toggle weapon menu with "Q"
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "q") {
+      weaponMenu.style.display = weaponMenu.style.display === "none" ? "block" : "none";
+    }
+
+    if (e.key.toLowerCase() === "control") {
+      fireBullet();
+    }
+  });
+
+  // Weapon select buttons
+  document.getElementById("selectGlock17").addEventListener("click", () => {
+    currentWeapon = "glock17";
+    alert("Selected weapon: Glock 17");
+    weaponMenu.style.display = "none";
+  });
+
+  document.getElementById("selectRifle").addEventListener("click", () => {
+    currentWeapon = "rifle";
+    alert("Selected weapon: Rifle");
+    weaponMenu.style.display = "none";
+  });
+
+  // If you have a glock switch button in your HTML:
+  const glockSwitchBtn = document.getElementById("selectGlockSwitch");
+  if (glockSwitchBtn) {
+    glockSwitchBtn.addEventListener("click", () => {
+      currentWeapon = "glockSwitch";
+      alert("Selected weapon: Glock Switch");
+      weaponMenu.style.display = "none";
+    });
+  }
+
+  function fireBullet() {
+    const now = performance.now();
+    const stats = weaponStats[currentWeapon];
+    if (!stats) {
+      console.warn("Unknown weapon stats for", currentWeapon);
+      return;
+    }
+    const minDelay = 1000 / stats.speed;
+    if (now - lastFireTime < minDelay) {
+      return; // Too soon to fire
+    }
+    lastFireTime = now;
+
+    // Create bullet mesh
+    const bullet = new THREE.Mesh(
+      new THREE.SphereGeometry(0.1, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xFFEC8B })
+    );
+
+    bullet.position.copy(camera.position);
+
+    // Use camera.getWorldDirection to get forward direction
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+    bullet.userData.velocity = direction.multiplyScalar(stats.speed * 0.1); // tweak speed multiplier as needed
+
+    bullet.userData.damage = stats.damage;
+
+    scene.add(bullet);
+    bullets.push(bullet);
+
+    console.log(`Fired ${currentWeapon} bullet with damage ${stats.damage}`);
+  }
+
+  function updateBullets() {
+    for (let i = 0; i < bullets.length; i++) {
+      bullets[i].position.add(bullets[i].userData.velocity);
+
+      // Remove bullet if too far
+      if (bullets[i].position.distanceTo(camera.position) > 1000) {
+        scene.remove(bullets[i]);
+        bullets.splice(i, 1);
+        i--;
+      }
+    }
+  }
+
+  // Make sure updateBullets is called in your animation loop:
+  function animate() {
+    requestAnimationFrame(animate);
+    movePlayer();
+    updateCamera();
+    renderer.render(scene, camera);
+    TWEEN.update();
+
+    updateBullets();
+  }
+  animate();
+});
+
+</script>
+
+
+<script>
+  
+  const modPasswords = {
+  owner: "666@owner",
+  admin: "9978@admin",
+  mod: "9985@mod
+  "
+};
+
+const modActions = {
+  owner: [
+    { label: "Fly", action: () => alert("Currently Unavaliable") },
+    {label: "Invinciability", action: () => alert("Currently Unavaliable")},
+    { label: "Restart Server", action: () => alert("Server restarting...")},
+    { label: "Kick Player", action: () => alert("Currently Unavaliable") },
+    { label: "Ban Player", action: () => alert("Currently Unavaliable") },
+    {label: "Spawn Owner Car", action: () => alert("Currently Unavaliable")},
+    {label: "JAIL Player", action: () => alert("Currently Unavaliable")},
+  ],
+  admin: [
+    { label: "Fly", action: () => alert("Currently Unavaliable") },
+    {label: "Invinciability", action: () => alert("Currently Unavaliable")},
+    { label: "Kick Player", action: () => alert("Currently Unavaliable") },
+    { label: "Give Weapon", action: () => alert("Currently Unavaliable") },
+    {label: "Spawn Admin Car", action: () => alert("Currently Unavaliable")},
+  ],
+  mod: [
+    { label: "Fly", action: () => alert("Currently Unavaliable") },
+    {label: "Invinciability", action: () => alert("Currently Unavaliable")},
+    { label: "Mute Player", action: () => alert("Currently Unavaliable") },
+    { label: "Kick Player", action: () => alert("Currently Unavaliable") },
+    {label: "Spawn Moderator Car", action: () => alert("Currently Unavaliable")}
+  ]
+};
+
+
+let userModLevel = null;
+
+
+
+
+function verifyModPassword() {
+  const entered = document.getElementById("modPassInput").value.trim();
+  for (const level in modPasswords) {
+    if (entered === modPasswords[level]) {
+      userModLevel = level;
+      document.getElementById("modLogin").style.display = "none";
+      document.getElementById("modToggleBtn").style.display = "block";
+      alert(`Access granted to ${level.toUpperCase()} menu.`);
+      return;
+    }
+  }
+  alert("Incorrect password.");
+}
+
+
+
+
+function openModMenu() {
+  const container = document.getElementById("modMenuContainer");
+  const title = document.getElementById("modMenuTitle");
+  const buttons = document.getElementById("modMenuButtons");
+
+  title.textContent = `${userModLevel.toUpperCase()} MENU`;
+  buttons.innerHTML = "";
+
+  modActions[userModLevel].forEach(action => {
+    const btn = document.createElement("button");
+    btn.textContent = action.label;
+    btn.onclick = action.action;
+    buttons.appendChild(btn);
+  });
+
+  container.style.display = "flex";
+}
+
+
+
+
+function closeModMenu() {
+  document.getElementById("modMenuContainer").style.display = "none";
+}
+
+  
+</script>
+
+  <script>
+
+    // --- Clock System with day-night cycle ---
+    let gameTime = 12; // start at noon
+    function updateClock() {
+      gameTime += 0.02; // speed multiplier
+      if (gameTime >= 24) gameTime = 0;
+      const hours = Math.floor(gameTime);
+      const minutes = Math.floor((gameTime % 1) * 60);
+      const clockText = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+      document.getElementById("gameClock").innerText = clockText;
+      requestAnimationFrame(updateClock);
+    }
+    updateClock();
+
+    // --- THREE.js Setup ---
+    const canvas = document.getElementById("gameCanvas");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000);
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+    camera.position.set(0, 2, 10);
+
+    // Lighting
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    directionalLight.position.set(100, 200, 100);
+    scene.add(directionalLight);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+    scene.add(ambientLight);
+
+    // Floor with repeating grass texture
+    const loader = new THREE.TextureLoader();
+    loader.load('grass-texture.png', texture => {
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(100, 100);
+      const floorMaterial = new THREE.MeshPhongMaterial({ map: texture });
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), floorMaterial);
+      floor.rotation.x = -Math.PI / 2;
+      floor.position.y = 0;
+      scene.add(floor);
+    });
+
+    // --- Building Setup ---
+    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+    const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xaaaaaa });
+    const building = new THREE.Group();
+    const wallMeshes = [];
+
+    const buildingWidth = 30;
+    const buildingDepth = 30;
+    const buildingHeight = 10;
+    const wallThickness = 1;
+
+    // Floor of building
+    const floorMesh = new THREE.Mesh(new THREE.BoxGeometry(buildingWidth, 1, buildingDepth), floorMaterial);
+    floorMesh.position.y = 0.5;
+    building.add(floorMesh);
+
+    // Walls
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(buildingWidth, buildingHeight, wallThickness), wallMaterial);
+    backWall.position.set(0, buildingHeight / 2 + 1, -buildingDepth / 2);
+    building.add(backWall);
+    wallMeshes.push(backWall);
+
+    const doorWidth = 3;
+    const sideWallWidth = (buildingWidth - doorWidth) / 2;
+
+    const frontWallLeft = new THREE.Mesh(
+      new THREE.BoxGeometry(sideWallWidth, buildingHeight, wallThickness),
+      wallMaterial
+    );
+    frontWallLeft.position.set(-doorWidth / 2 - sideWallWidth / 2, buildingHeight / 2 + 1, buildingDepth / 2);
+    building.add(frontWallLeft);
+    wallMeshes.push(frontWallLeft);
+
+    const frontWallRight = new THREE.Mesh(
+      new THREE.BoxGeometry(sideWallWidth, buildingHeight, wallThickness),
+      wallMaterial
+    );
+    frontWallRight.position.set(doorWidth / 2 + sideWallWidth / 2, buildingHeight / 2 + 1, buildingDepth / 2);
+    building.add(frontWallRight);
+    wallMeshes.push(frontWallRight);
+
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, buildingHeight, buildingDepth), wallMaterial);
+    leftWall.position.set(-buildingWidth / 2, buildingHeight / 2 + 1, 0);
+    building.add(leftWall);
+    wallMeshes.push(leftWall);
+
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, buildingHeight, buildingDepth), wallMaterial);
+    rightWall.position.set(buildingWidth / 2, buildingHeight / 2 + 1, 0);
+    building.add(rightWall);
+    wallMeshes.push(rightWall);
+
+    // Roof
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(buildingWidth, 1, buildingDepth), floorMaterial);
+    roof.position.y = buildingHeight + 1;
+    building.add(roof);
+
+    // Door (opens/closes)
+    const door = new THREE.Mesh(
+      new THREE.BoxGeometry(doorWidth, 7, 0.5),
+      new THREE.MeshStandardMaterial({ color: 0x552200 })
+    );
+    door.position.set(0, 4, buildingDepth / 2 + 0.25);
+    door.isOpen = false;
+    building.add(door);
+
+    building.position.set(0, 0, 0);
+    scene.add(building);
+
+    // --- Player Setup ---
+    const playerGroup = new THREE.Group();
+
+    // Body parts
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+    const skinMat = new THREE.MeshStandardMaterial({ color: 0xffffcc });
+    const blackMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 1), bodyMat);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), skinMat);
+    const armL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2, 0.5), bodyMat);
+    const armR = armL.clone();
+    const legL = new THREE.Mesh(new THREE.BoxGeometry(0.6, 2, 0.6), blackMat);
+    const legR = legL.clone();
+
+    head.position.set(0, 2.5, 0);
+    body.position.set(0, 0.5, 0);
+    armL.position.set(-1.2, 0.5, 0);
+    armR.position.set(1.2, 0.5, 0);
+    legL.position.set(-0.5, -2, 0);
+    legR.position.set(0.5, -2, 0);
+
+    playerGroup.add(body, head, armL, armR, legL, legR);
+    playerGroup.position.set(0, 3, -10);
+    scene.add(playerGroup);
+
+    // Gun mesh attached to player
+    const gun = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 1.5), new THREE.MeshStandardMaterial({ color: 0x000000 }));
+    gun.position.set(1.5, 0.5, 0.2);
+    playerGroup.add(gun);
+
+    // --- Controls ---
+    const keys = {};
+    document.addEventListener("keydown", (e) => {
+      keys[e.key.toLowerCase()] = true;
+      if (e.key.toLowerCase() === "e") {
+        // Open/close door if close enough
+        const frontVector = new THREE.Vector3(0, 0, -1).applyQuaternion(playerGroup.quaternion).normalize().multiplyScalar(2);
+        const playerFront = playerGroup.position.clone().add(frontVector);
+        const distance = playerFront.distanceTo(door.position);
+        if (distance < 3.5) {
+          door.isOpen = !door.isOpen;
+          door.rotation.y = door.isOpen ? -Math.PI / 2 : 0;
+        }
+      }
+    });
+    document.addEventListener("keyup", (e) => {
+      keys[e.key.toLowerCase()] = false;
+    });
+
+    // Player movement with collision detection against walls and door
+    function movePlayer() {
+      let mx = 0, mz = 0;
+      const speed = 0.5;
+
+      if (keys["w"]) mz -= 1;
+      if (keys["s"]) mz += 1;
+      if (keys["a"]) mx -= 1;
+      if (keys["d"]) mx += 1;
+
+      const length = Math.hypot(mx, mz);
+      if (length > 0) {
+        mx /= length;
+        mz /= length;
+        const angle = camYaw + Math.atan2(mx, mz);
+        const dx = Math.sin(angle) * speed;
+        const dz = Math.cos(angle) * speed;
+        const nextPos = playerGroup.position.clone().add(new THREE.Vector3(dx, 0, dz));
+
+        let blocked = false;
+        // Check collision with walls
+        for (const wall of wallMeshes) {
+          const wallBox = new THREE.Box3().setFromObject(wall);
+          const playerBox = new THREE.Box3().setFromCenterAndSize(nextPos.clone().setY(1.5), new THREE.Vector3(1.5, 3, 1));
+          if (wallBox.intersectsBox(playerBox)) {
+            blocked = true;
+            break;
+          }
+        }
+        // Check collision with door if closed
+        if (!door.isOpen) {
+          const doorBox = new THREE.Box3().setFromObject(door);
+          const playerBox = new THREE.Box3().setFromCenterAndSize(nextPos.clone().setY(1.5), new THREE.Vector3(1.5, 3, 1));
+          if (doorBox.intersectsBox(playerBox)) blocked = true;
+        }
+        if (!blocked) {
+          playerGroup.rotation.y = angle;
+          playerGroup.position.x += dx;
+          playerGroup.position.z += dz;
+        }
+      }
+    }
+
+    // Mouse look controls
+    let camYaw = 0, camPitch = 0;
+    let mouseDown = false;
+    window.addEventListener("mousedown", () => mouseDown = true);
+    window.addEventListener("mouseup", () => mouseDown = false);
+    window.addEventListener("mousemove", e => {
+      if (mouseDown) {
+        camYaw -= e.movementX * 0.002;
+        camPitch -= e.movementY * 0.002;
+        camPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camPitch));
+      }
+    });
+
+    // Camera update: first-person view
+    function updateCamera() {
+      camera.position.copy(playerGroup.position).add(new THREE.Vector3(0, 2, 0));
+      camera.rotation.set(camPitch, camYaw, 0);
+    }
+
+    // Responsive resize
+    window.addEventListener("resize", () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    // Main animation loop
+    function animate() {
+      requestAnimationFrame(animate);
+      movePlayer();
+      updateCamera();
+      renderer.render(scene, camera);
+      TWEEN.update();
+    }
+    animate();
+
+  </script>
+
+</body>
+</html>

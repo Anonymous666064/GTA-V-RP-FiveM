@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>GTA V RP FiveM/PS5/PS4/Xbox/PC</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #0a0a0a;
+      color: white;
+    }
+
+    #loader {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      font-size: 18px;
+    }
+
+    #joinScreen, #characterSelect, #playButton {
+      display: none;
+      text-align: center;
+      margin-top: 100px;
+      position: relative;
+      z-index: 10;
+      background: #0a0a0a;
+      padding: 40px;
+      border-radius: 12px;
+      max-width: 400px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    iframe {
+      width: 100vw;
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      border: none;
+      display: none;
+      z-index: 1;
+    }
+
+    .JoinBtn, .PlayBtn, .CharBtn {
+      background: black;
+      color: #00ffe0;
+      border: 2px solid #00ffe0;
+      padding: 15px 30px;
+      margin: 10px;
+      font-size: 18px;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 0 15px #00ffe0;
+      transition: all 0.3s ease;
+    }
+
+    .JoinBtn:hover, .PlayBtn:hover, .CharBtn:hover {
+      background-color: #00ffe0;
+      color: black;
+      box-shadow: 0 0 25px #00ffe0, 0 0 50px #00ffe0;
+      transform: scale(1.05);
+    }
+
+    input {
+      padding: 10px;
+      font-size: 18px;
+      border-radius: 8px;
+      margin: 10px;
+      width: 80%;
+      background-color: #111;
+      color: #00ffe0;
+      border: 1px solid #00ffe0;
+    }
+
+    h1, h2 {
+      margin-bottom: 30px;
+    }
+
+    #ageWarning {
+      color: red;
+      display: none;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loader">Loading FiveM Game...</div>
+
+  <div id="joinScreen">
+    <h1>Join a Server</h1>
+    <button onclick="selectServer(1)" class="JoinBtn">Join Server 1 Gta V RP</button>
+    <button onclick="selectServer(2)" class="JoinBtn">Join Server 2 Gta V RP</button>
+    <button onclick="selectServer(3)" class="JoinBtn">Join Server 3 Gta V RP</button>
+    <button onclick="selectServer(4)" class="JoinBtn">Join Server 4 Gta V RP</button>
+    <button onclick="selectServer(5)" class="JoinBtn">Join Server 5 Gta V RP</button>
+  </div>
+
+  <div id="characterSelect">
+    <h2>Enter Your Age and Birth Date</h2>
+    <input type="number" id="ageInput" placeholder="Enter age" min="1" max="120" />
+    <input type="date" id="birthDateInput" max="2025-12-31" />
+    <br />
+    <button onclick="verifyAge()" class="CharBtn">Continue</button>
+    <p id="ageWarning">You must be between 13 and 50 years old</p>
+  </div>
+
+  <div id="playButton">
+    <button onclick="playGame()" class="PlayBtn">Play</button>
+  </div>
+
+  <iframe id="gameFrame"></iframe>
+
+  <script>
+    window.onload = () => {
+      setTimeout(() => {
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('joinScreen').style.display = 'block';
+      }, 2000);
+    };
+
+    function selectServer(n) {
+      document.getElementById('joinScreen').style.display = 'none';
+      document.getElementById('characterSelect').style.display = 'block';
+    }
+
+    function calculateAge(birthDate) {
+      const today = new Date();
+      const birth = new Date(birthDate);
+      let age = today.getFullYear() - birth.getFullYear();
+      const m = today.getMonth() - birth.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+        age--;
+      }
+      return age;
+    }
+
+    function verifyAge() {
+      const ageInput = parseInt(document.getElementById("ageInput").value);
+      const birthDateInput = document.getElementById("birthDateInput").value;
+      const warning = document.getElementById("ageWarning");
+
+      if (!ageInput || !birthDateInput) {
+        warning.textContent = "Please enter both your age and birth date.";
+        warning.style.display = "block";
+        return;
+      }
+
+      const calculatedAge = calculateAge(birthDateInput);
+
+      if (ageInput !== calculatedAge) {
+        warning.textContent = "Your entered age does not match your birth date.";
+        warning.style.display = "block";
+        return;
+      }
+
+      if (ageInput < 13 || ageInput > 50) {
+        warning.textContent = "Only players between ages 13 and 50 are allowed.";
+        warning.style.display = "block";
+        return;
+      }
+
+      // Save to localStorage
+      localStorage.setItem("userAge", ageInput);
+      localStorage.setItem("userBirthDate", birthDateInput);
+
+      warning.style.display = "none";
+      document.getElementById("characterSelect").style.display = "none";
+      document.getElementById("playButton").style.display = "block";
+    }
+
+    function playGame() {
+      document.getElementById("playButton").style.display = "none";
+      const frame = document.getElementById("gameFrame");
+      frame.src = "test2[1].html"; // Replace with your actual game file
+      frame.style.display = "block";
+    }
+  </script>
+</body>
+</html>
